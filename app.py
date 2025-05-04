@@ -1,6 +1,5 @@
 import streamlit as st
 
-# Função para ler o arquivo .pbm
 def ler_pbm(conteudo):
     linhas = [linha.strip() for linha in conteudo.split('\n') 
              if linha.strip() and not linha.startswith('#')]
@@ -11,7 +10,6 @@ def ler_pbm(conteudo):
     dados = ' '.join(linhas[2:]).split()
     return [[int(dados[i*largura + j]) for j in range(largura)] for i in range(altura)]
 
-# Função para converter .pbm para matriz de 0s e 1s
 def matriz_para_pbm(matriz):
     altura = len(matriz)
     largura = len(matriz[0]) if altura > 0 else 0
@@ -36,10 +34,11 @@ def inverter_horizontal(matriz):
 def inverter_vertical(matriz):
     return [linha.copy() for linha in reversed(matriz)]
 
-# Operações de Permuta
+# Operações de Permuta Dinâmicas
 def trocar_linhas(matriz, i, j):
-    matriz[i], matriz[j] = matriz[j], matriz[i]
-    return matriz
+    nova_matriz = [linha.copy() for linha in matriz]
+    nova_matriz[i], nova_matriz[j] = nova_matriz[j], nova_matriz[i]
+    return nova_matriz
 
 def trocar_colunas(matriz, i, j):
     return [[linha[i] if k == j else linha[j] if k == i else linha[k] 
@@ -64,11 +63,26 @@ def contar_uns(matriz):
 def main():
     st.title("Super Processador PBM")
     
-    arquivo = st.file_uploader("Envie seu arquivo PBM", type="pbm")
+    # Inicializa o estado da sessão
+    if 'matriz_original' not in st.session_state:
+        st.session_state.matriz_original = None
+    if 'resultado' not in st.session_state:
+        st.session_state.resultado = None
+    if 'segunda_matriz' not in st.session_state:
+        st.session_state.segunda_matriz = None
+    
+    arquivo = st.file_uploader("Envie seu arquivo PBM", type="pbm", key="file_uploader")
     
     if arquivo:
-        matriz = ler_pbm(arquivo.read().decode('utf-8'))
-        if matriz:
+        # Atualiza a matriz original se um novo arquivo foi carregado
+        if st.session_state.matriz_original is None or arquivo.name != st.session_state.get('current_file'):
+            st.session_state.matriz_original = ler_pbm(arquivo.read().decode('utf-8'))
+            st.session_state.current_file = arquivo.name
+            st.session_state.resultado = None
+            st.session_state.segunda_matriz = None
+        
+        if st.session_state.matriz_original:
+            matriz = st.session_state.matriz_original
             altura = len(matriz)
             largura = len(matriz[0]) if altura > 0 else 0
             
@@ -77,10 +91,6 @@ def main():
             st.text(f"Dimensões: {largura}x{altura}")
             st.text('\n'.join(' '.join(str(x) for x in linha) for linha in matriz))
             st.write("---")
-            
-            # Variável para armazenar o resultado
-            if 'resultado' not in st.session_state:
-                st.session_state.resultado = None
             
             tab1, tab2, tab3 = st.tabs(["Operações Geométricas", "Permutas", "Operações Matemáticas"])
             
@@ -115,7 +125,7 @@ def main():
                     op_coluna = st.selectbox("Colunas:", opcoes_colunas, key="coluna")
                 
                 if st.button("Aplicar Permuta"):
-                    temp_result = matriz if st.session_state.resultado is None else st.session_state.resultado
+                    temp_result = matriz if st.session_state.resultado is None else st.session_state.resultado.copy()
                     if op_linha != "Nenhuma":
                         idx = opcoes_linhas.index(op_linha) - 1
                         temp_result = trocar_linhas(temp_result, idx, altura - 1 - idx)
@@ -132,30 +142,36 @@ def main():
                     "Multiplicar por escalar", "Somar com outra matriz"
                 ], key="math")
                 
-                # Mostra input do escalar 
                 if op_math == "Multiplicar por escalar":
                     escalar = st.number_input("Valor do escalar:", min_value=0, value=1, key="escalar")
-                
-                # Mostra upload de arquivo 
-                if op_math == "Somar com outra matriz":
-                    arq2 = st.file_uploader("Envie a segunda matriz", type="pbm", key="arq2")
-                
-                if st.button("Aplicar Operação Matemática"):
-                    temp_result = matriz if st.session_state.resultado is None else st.session_state.resultado
-                    if op_math == "Negativa":
-                        st.session_state.resultado = negativa(temp_result)
-                    elif op_math == "Multiplicar por escalar":
+                    if st.button("Aplicar Multiplicação"):
+                        temp_result = matriz if st.session_state.resultado is None else st.session_state.resultado
                         st.session_state.resultado = multiplicar_escalar(temp_result, escalar)
-                    elif op_math == "Somar com outra matriz":
-                        if 'arq2' in st.session_state and st.session_state.arq2 is not None:
-                            m2 = ler_pbm(st.session_state.arq2.getvalue().decode('utf-8'))
+                
+                elif op_math == "Somar com outra matriz":
+                    arq2 = st.file_uploader("Envie a segunda matriz", type="pbm", key="arq2")
+                    if arq2:
+                        st.session_state.segunda_matriz = ler_pbm(arq2.getvalue().decode('utf-8'))
+                    
+                    if st.button("Aplicar Soma"):
+                        if st.session_state.segunda_matriz is not None:
+                            m2 = st.session_state.segunda_matriz
+                            temp_result = matriz if st.session_state.resultado is None else st.session_state.resultado
                             if m2 and len(m2) == altura and len(m2[0]) == largura:
                                 st.session_state.resultado = somar_matrizes(temp_result, m2)
                             else:
                                 st.error("As matrizes devem ter as mesmas dimensões!")
                         else:
                             st.error("Por favor, envie a segunda matriz primeiro")
-                    elif op_math == "Contar pixels brancos":
+                
+                elif op_math == "Negativa":
+                    if st.button("Aplicar Negativa"):
+                        temp_result = matriz if st.session_state.resultado is None else st.session_state.resultado
+                        st.session_state.resultado = negativa(temp_result)
+                
+                elif op_math == "Contar pixels brancos":
+                    if st.button("Contar Pixels Brancos"):
+                        temp_result = matriz if st.session_state.resultado is None else st.session_state.resultado
                         st.success(f"Pixels brancos: {contar_uns(temp_result)}")
             
             # Exibe o resultado
