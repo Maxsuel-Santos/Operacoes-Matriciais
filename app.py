@@ -1,5 +1,6 @@
 import streamlit as st
 
+# Função para ler o arquivo .pbm
 def ler_pbm(conteudo):
     linhas = [linha.strip() for linha in conteudo.split('\n') 
              if linha.strip() and not linha.startswith('#')]
@@ -10,6 +11,7 @@ def ler_pbm(conteudo):
     dados = ' '.join(linhas[2:]).split()
     return [[int(dados[i*largura + j]) for j in range(largura)] for i in range(altura)]
 
+# Função para converter .pbm -> matriz
 def matriz_para_pbm(matriz):
     altura = len(matriz)
     largura = len(matriz[0]) if altura > 0 else 0
@@ -34,7 +36,7 @@ def inverter_horizontal(matriz):
 def inverter_vertical(matriz):
     return [linha.copy() for linha in reversed(matriz)]
 
-# Operações de Permuta Dinâmicas
+# Operações de Permuta
 def trocar_linhas(matriz, i, j):
     nova_matriz = [linha.copy() for linha in matriz]
     nova_matriz[i], nova_matriz[j] = nova_matriz[j], nova_matriz[i]
@@ -94,6 +96,7 @@ def main():
             
             tab1, tab2, tab3 = st.tabs(["Operações Geométricas", "Permutas", "Operações Matemáticas"])
             
+            # Tab de opções 1
             with tab1:
                 op_geo = st.selectbox("Selecione:", [
                     "Nenhuma", "Transposta", "Rotacionar 90°", "Rotacionar 180°", 
@@ -114,6 +117,7 @@ def main():
                     elif op_geo == "Inverter Vertical":
                         st.session_state.resultado = inverter_vertical(matriz)
             
+            # Tab de opções 2
             with tab2:
                 col1, col2 = st.columns(2)
                 with col1:
@@ -136,6 +140,7 @@ def main():
                     
                     st.session_state.resultado = temp_result
             
+            # Tab de opções 3
             with tab3:
                 op_math = st.selectbox("Operação:", [
                     "Nenhuma", "Negativa", "Contar pixels brancos", 
